@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <link rel="stylesheet" href="index.css">
+    <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
+    <script src="./vue.js"></script>
+    <link rel="stylesheet" href="base.css">
+</head>
+<body>
+<div class="page-top">
+    <div class="page-content">
+        <h2>TodoList</h2>
+    </div>
+</div>
+<div class="main">
+    <h3 class="big-title">Adding Tasks：</h3>
+    <input
+            placeholder="请输入你想完成的任务                       +enter即可添加任务（在下方单击表示完成任务、双击修改任务）"
+            class="task-input"
+            type="text"
+            v-on:keyup.enter="enterFn"
+            v-model="todo"
+    />
+    <ul class="task-count">
+        <li>{{unComplete}}个任务未完成</li>
+    </ul>
+    <h3 class="big-title">Tasks List：</h3>
+    <div class="tasks">
+
+        <span class="no-task-tip" v-if="list.length==0">还没有添加任何任务</span>
+        <ul class="todo-list" v-show="list.length">
+            <li class="todo"
+                v-for="item in filterData"
+                :class="{completed:item.isComplete,editing:item===edtorTodos}"
+            >
+                <div class="view">
+                    <input class="toggle"
+                           type="checkbox"
+                           v-model="item.isComplete"
+                    />
+                    <label @dblclick="edtorTodo(item)">{{item.title}}</label>
+                    <button
+                            class="destroy"
+                            @click="delFn(item)"
+                    ></button>
+                </div>
+                <input
+                        class="edit"
+                        type="text"
+                        v-focus="edtorTodos===item"
+                        v-model="item.title"
+                        @blur="edtoEnd(item)"
+                        @keyup.enter="edtoEnd(item)"
+                        @keyup.esc="cancelEdit(item)"
+                />
+            </li>
+        </ul>
+    </div>
+</div>
+<script>
+
+    //存取localStorage中的数据
+    var store = {
+        save(key,value){
+            window.localStorage.setItem(key,JSON.stringify(value));
+        },
+        fetch(key){
+            return JSON.parse(window.localStorage.getItem(key))||[];
+        }
+    }
+
+    var list = store.fetch("storeData");
+
+    var v = new Vue({
+        el:".main",
+        data:{
+            list,
+            todo:'',
+            edtorTodos:'',//记录正在编辑的数据,
+            beforeTitle:"",//记录正在编辑的数据的title
+            visibility:"all"//通过这个属性值的变化对数据进行筛选
+        },
+        watch:{
+
+            list:{
+                handler:function(){
+                    store.save("storeData",this.list);
+                },
+                deep:true
+            }
+
+        },
+        methods:{
+            enterFn(ev){//添加任务
+
+                if(this.todo==""){return;}
+                this.list.push({
+                    title:this.todo,
+                    isComplete:false
+                });
+                this.todo = "";
+            },
+            delFn(item){//删除任务
+                var index = this.list.indexOf(item);
+                this.list.splice(index,1)
+            },
+            edtorTodo(item){//编辑任务
+
+                this.beforeTitle = item.title;
+                this.edtorTodos = item;
+            },
+            edtoEnd(item){//编辑完成
+                this.edtorTodos="";
+                // this.cancelEdit = this.edtorTodos;
+            },
+            cancelEdit(item){//取消编辑
+                item.title = this.beforeTitle;
+                this.beforeTitle = '';
+                this.edtorTodos='';
+            }
+        },
+        directives:{
+            "focus":{
+                update(el,binding){
+                    if(binding.value){
+                        el.focus();
+                    }
+                }
+            }
+        },
+        computed:{
+            unComplete(){
+                return  this.list.filter(item=>{
+                    return !item.isComplete
+                }).length
+            },
+            filterData(){
+
+                var filter = {
+                    all:function(list){
+                        return list;
+                    },
+                    completed:function(list){
+                        return list.filter(item=>{
+                            return item.isComplete;
+                        })
+                    },
+                    unCompleted:function(list){
+                        return list.filter(item=>{
+                            return !item.isComplete;
+                        })
+                    }
+                }
+
+                return filter[this.visibility]?filter[this.visibility](list):list;
+            }
+
+        }
+    });
+    function hashFn(){
+        var hash = window.location.hash.slice(1);
+        v.visibility = hash;
+    }
+    hashFn();
+    window.addEventListener('hashchange',hashFn);
+
+</script>
+</body>
+</html>
